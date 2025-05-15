@@ -12,12 +12,14 @@
 #include "utils.h"
 
 #define HASHTABLE_T_ARENA_SIZE 65536
+#define HT_KEY_TYPE u32
+#define HT_VALUE_TYPE u32
 
-typedef size_t (*hashfunc_t)(u32); 
+typedef size_t (*hashfunc_t)(HT_KEY_TYPE); 
 
 typedef struct {
-	u32 key;
-	char value;
+	HT_KEY_TYPE key;
+	HT_VALUE_TYPE value;
 } hashtable_entry_t;
 
 // a hashtable can have at most HASHTABLE_T_ARENA_SIZE entries
@@ -31,8 +33,8 @@ typedef struct {
 
 size_t hashfunc_uint32(void*);
 hashtable_t ht_new(size_t, hashfunc_t);
-void ht_insert(hashtable_t*, u32, char);
-char* ht_get(const hashtable_t*, u32);
+void ht_insert(hashtable_t*, HT_KEY_TYPE, HT_VALUE_TYPE);
+HT_VALUE_TYPE* ht_get(const hashtable_t*, HT_KEY_TYPE);
 void ht_destroy(hashtable_t*);
 
 #endif
