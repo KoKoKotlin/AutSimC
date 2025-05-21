@@ -21,9 +21,8 @@ hashtable_t dfa_create_transitions(sarray_pair_u32_t pairs, string transition_sy
 	return transitions;
 }
 
-dfa_t dfa_new(size_t state_count, sarray_string_t state_names, sarray_size_t final_states, size_t initial_state, hashtable_t transitions, char* alphabet) {
+dfa_t dfa_new(sarray_string_t state_names, sarray_size_t final_states, size_t initial_state, hashtable_t transitions, char* alphabet) {
 	dfa_t dfa = {
-		.state_count = state_count,
 		.state_names = state_names,
 		.final_states = final_states,
 		.initial_state = initial_state,
@@ -59,27 +58,31 @@ bool dfa_accepts(const dfa_t* dfa, string input) {
 }
 
 bool dfa_check_valid(const dfa_t* dfa) {
-	for (size_t i = 0; i < dfa->state_count; ++i) {
+	for (size_t i = 0; i < dfa->state_names.size; ++i) {
 		for(char* c = dfa->alphabet; *c != '\0'; c++) {
 			if (dfa_read_single(dfa, i, *c) == NULL) return false;
 		}
 	}
 
-	if (dfa->initial_state >= dfa->state_count) return false;
+	if (dfa->initial_state >= dfa->state_names.size) return false;
 
 	for (size_t i = 0; i < dfa->final_states.size; ++i) {
-		if (dfa->final_states.items[i] >= dfa->state_count) return false;
+		if (dfa->final_states.items[i] >= dfa->state_names.size) return false;
 	}
 	
 	return true;
 }
 
 void dfa_debug_print(const dfa_t* dfa) {
-	for (u32 i = 0; i < dfa->state_count; ++i) {
+	printf("Number of states: %zu\n", dfa->state_names.size);
+	printf("Number of final states: %zu\n", dfa->final_states.size);
+	printf("Alphabet: %s\n", dfa->alphabet);
+	
+	for (u32 i = 0; i < dfa->state_names.size; ++i) {
 		for(char* c = dfa->alphabet; *c != '\0'; c++) {
 			u32* next_state_ptr = dfa_read_single(dfa, i, *c);
 			u32 next_state = *next_state_ptr;
-			printf("%s(%u) & %c -> %s(%u)\n", dfa->state_names.items[i], i, *c, dfa->state_names.items[next_state], next_state);
+			printf("  - Transition: %s(%u) & %c -> %s(%u)\n", dfa->state_names.items[i], i, *c, dfa->state_names.items[next_state], next_state);
 		}
 	}
 }

@@ -1,12 +1,12 @@
 #include "dfa.h"
 #include "hashtable.h"
 #include "utils.h"
+#include "loader.h"
 
 #include <stdlib.h>
 
 
-int main() {
-	const size_t state_count = 3;
+void test_dfa() {
 	string state_names_temp[] = {
 		"a",
 		"b",
@@ -28,7 +28,7 @@ int main() {
 	hashtable_t transitions = dfa_create_transitions(pairs, syms);
 	string alphabet = "ab";
 	
-	dfa_t dfa = dfa_new(state_count, state_names, final_states, 0, transitions, alphabet); 
+	dfa_t dfa = dfa_new(state_names, final_states, 0, transitions, alphabet); 
 
 	dfa_debug_print(&dfa);
 
@@ -44,4 +44,38 @@ int main() {
 		string curr = test_inputs[i];
 		printf("%s: DFA accepts? %d\n", curr, dfa_accepts(&dfa, curr));
 	}
+}
+
+void test_loader() {
+	const string path = "examples/dfa.aut";
+
+	loader_result_t res = { 0 };
+	loader_result_type_t res_type = load(path, &res);
+	printf("Loaded: %s\n", loader_result_to_string(res_type));
+	if (res_type == DFA) {
+		dfa_debug_print(&res.dfa);
+	}
+	
+	string test_inputs[] = {
+		"ab",
+		"ababab",
+		"aaa",
+		"bbb",
+		"aabb",
+		"ba",
+		"aba"
+	};
+	
+	for (size_t i = 0; i < 7; i++) {
+		string curr = test_inputs[i];
+		printf("%s: DFA accepts? %d\n", curr, dfa_accepts(&res.dfa, curr));
+	}
+}
+
+int main() {
+	test_dfa();
+	printf("\n");
+	test_loader();
+	
+	return 0;
 }

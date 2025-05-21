@@ -1,8 +1,8 @@
 CC = gcc
-GEN_OBJECTS = dfa.o hashtable.o sv.o utils.o
+GEN_OBJECTS = loader.o dfa.o hashtable.o sv.o utils.o
 OBJECTS = main.o $(GEN_OBJECTS)
 TEST_OBJECTS = test.o $(GEN_OBJECTS)
-CFLAGS = -Wall -Wextra
+CFLAGS = -g -ggdb -O1 -Wall -Wextra
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

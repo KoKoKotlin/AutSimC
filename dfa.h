@@ -10,7 +10,6 @@
 #include "utils.h"
 
 typedef struct {
-	size_t state_count;
 	sarray_string_t state_names;
 	sarray_size_t final_states;
 	size_t initial_state;
@@ -18,7 +17,7 @@ typedef struct {
 	char* alphabet;
 } dfa_t;
 
-dfa_t dfa_new(size_t, sarray_string_t, sarray_size_t, size_t, hashtable_t, char*);
+dfa_t dfa_new(sarray_string_t, sarray_size_t, size_t, hashtable_t, char*);
 hashtable_t dfa_create_transitions(sarray_pair_u32_t, string);
 u32* dfa_read_single(const dfa_t*, size_t, char);
 bool dfa_accepts(const dfa_t*, string);

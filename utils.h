@@ -30,6 +30,6 @@ CREATE_SIZED_ARRAY(pair_u32_u32_t);
 typedef sarray_pair_u32_u32_t_t sarray_pair_u32_t;
 
 size_t hashfunc_u32(u32);
-	
+
 #endif
 
