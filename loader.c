@@ -1,5 +1,6 @@
 #include "loader.h"
 
+// TODO: add checking of input and proper errors with loc and reason
 
 // (dfa|nfa|enfa) no_of_states no_of_transitions (initial_state0, initial_state1, ...) (final_state0, final_state1, ...) alphabet
 // (s state_name)*
