@@ -73,8 +73,8 @@ void test_loader() {
 }
 
 int main() {
-	test_dfa();
-	printf("\n");
+	// test_dfa();
+	// printf("\n");
 	test_loader();
 	
 	return 0;

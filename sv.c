@@ -26,10 +26,10 @@ sv_t sv_slice(const sv_t* sv, size_t start, size_t end) {
 }
 
 sv_t sv_next_line(sv_t* view) {
-	return sv_chop(view, '\n', false);
+	return sv_chopc(view, '\n', false);
 }
 
-sv_t sv_chop(sv_t* view, char c, bool include_delim) {
+sv_t sv_chopc(sv_t* view, char c, bool include_delim) {
 	char* occ = view->items + view->count;
 	for (size_t i = 0; i < view->count; ++i) {
 		if (view->items[i] == c) {
@@ -41,6 +41,31 @@ sv_t sv_chop(sv_t* view, char c, bool include_delim) {
 	sv_t res_view = { .count=(occ - view->items + (include_delim ? 1 : 0)), .items=view->items};
 	view->items = occ + 1;
 	view->count -= res_view.count;
+
+	return res_view;
+}
+
+sv_t sv_chops(sv_t* view, string syms, bool include_delim) {
+	char* occ = view->items + view->count;
+	for (size_t i = 0; i < view->count; ++i) {
+		if (string_contains(view->items[i], syms)) {
+			occ = view->items + i;
+			break;
+		}
+	}
+	
+	sv_t res_view = { .count=(occ - view->items + (include_delim ? 1 : 0)), .items=view->items};
+	view->items = occ + 1;
+	view->count -= res_view.count;
+
+	return res_view;
+}
+
+sv_t sv_chopi(sv_t* view, size_t amount) {
+	amount = (amount < view->count) ? amount : view->count;
+	sv_t res_view = { .count=amount, .items=view->items};
+	view->items += amount;
+	view->count -= amount;
 
 	return res_view;
 }

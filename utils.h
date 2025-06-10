@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 
 typedef char* string;
 typedef uint32_t u32;
@@ -18,6 +21,14 @@ typedef uint32_t u32;
 	(name).items = malloc(array_size * sizeof(type));	\
 	memcpy((name).items, (array), array_size * sizeof(type));
 
+#define SARRAY(type, count, data_ptr) (sarray_t) { .size = (count), .items = (data_ptr) })
+
+typedef struct {
+	size_t size;
+	void* items;
+} sarray_t;
+
+typedef bool(*comperator_t)(void*, void*);
 
 CREATE_PAIR_STRUCT(u32, u32);
 CREATE_PAIR_STRUCT(u32, char);
@@ -30,6 +41,8 @@ CREATE_SIZED_ARRAY(pair_u32_u32_t);
 typedef sarray_pair_u32_u32_t_t sarray_pair_u32_t;
 
 size_t hashfunc_u32(u32);
+bool string_contains(char c, const string syms);
+bool sarray_contains(void*, sarray_t*, size_t, comperator_t);
 
 #endif
 

@@ -8,3 +8,19 @@ size_t hashfunc_u32(u32 x) {
 	x ^= x >> 16;
 	return x;
 }
+
+bool string_contains(char c, const string syms) {
+	for (size_t i = 0; i < strlen(syms); ++i) {
+		if (c == syms[i]) return true;
+	}
+
+	return false;
+}
+
+bool sarray_contains(void* obj, sarray_t* arr, size_t item_size, comperator_t comperator) {
+	for (size_t i = 0; i < arr->size; i++) {
+		void* obj2 = (void*)((uint8_t*)arr->items + i * item_size);
+		if (comperator(obj, obj2)) return true;
+	}
+	return false;
+}
