@@ -1,15 +1,5 @@
 #include "loader.h"
 
-#define ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", __VA_ARGS__)
-#define TT_NAME(toktype) token_type_names[toktype]
-
-#define EXPECT(var_name, count, ...) \
-	if (!expect_token(&lexer, &var_name, count, __VA_ARGS__)) { \
-		expect_error(&var_name, path, count, __VA_ARGS__);  \
-		goto loader_error;					  \
-	}
-
-
 // TODO: still add sanity checks
 // TODO: add string/char parsing/toktype
 // TODO: add string as state name, char as transition sym
@@ -18,25 +8,6 @@
 // (s state_name)*
 // (t start_state_name dest_state_name symbol)*
 
-static string loader_result_names[4] = {
-	"DFA",
-	"NFA",
-	"ENFA",
-	"LOADER_ERROR",
-};
-
-static string token_type_names[TOKEN_TYPE_COUNT] = {
-	"IDENT",
-	"NUMBER",
-	"OP_S",
-	"OP_T",
-	"OP_DFA",
-	"OP_NFA",
-	"OP_ENFA",
-	"OPENING_PAREN",
-	"CLOSING_PAREN",
-	"EOF",
-};
 
 lexer_t lexer_init(sv_t view) {
 	lexer_t lexer = { 0 };
@@ -93,6 +64,17 @@ void trim_whitespace(lexer_t* lexer) {
 	if (i > 0) sv_chopi(&lexer->view, i);
 }
 
+token_t error_tok(lexer_t* lexer, const string msg) {
+	token_t t = {
+		.col = lexer->col,
+		.row = lexer->row,
+		.type = TOK_ERROR,
+		.view = sv_from_cstr(msg),
+	};
+
+	return t;
+}
+
 token_t next_token(lexer_t* lexer) {
 	token_t tok = { 0 };
 	
@@ -113,6 +95,39 @@ token_t next_token(lexer_t* lexer) {
 			tok.type = get_token_type(&tok.view);
 			lexer->current += 1;
 			lexer->col += 1;
+			break;
+		} else if (next == '\'') {
+			if (lexer->view.items[2] != '\'') {
+				return error_tok(lexer, "Char has no closing `'`!");
+			}	
+
+			tok.col = lexer->col;
+			tok.row = lexer->row;
+			sv_chopi(&lexer->view, 1);
+			tok.view = sv_chopi(&lexer->view, 1);
+			sv_chopi(&lexer->view, 1);
+			tok.type = CHAR;
+			lexer->current += 3;
+			lexer->col += 3;
+			break;
+		} else if (next == '\"') {
+			next = lexer->view.items[++i];
+			while(next != '\"') {
+				if (next == '\n' || i == lexer->view.count) {
+					return error_tok(lexer, "String has no closing `\"`!");
+				}
+				i += 1;
+				next = lexer->view.items[i];
+			}
+
+			tok.col = lexer->col;
+			tok.row = lexer->row;
+			sv_chopi(&lexer->view, 1);
+			tok.view = sv_chopi(&lexer->view, i-1);
+			sv_chopi(&lexer->view, 1);
+			tok.type = STRING;
+			lexer->current += i+1;
+			lexer->col += i+1;
 			break;
 		} else if (string_contains(next, " \n") || i == lexer->view.count) {
 			tok.col = lexer->col;
@@ -147,7 +162,7 @@ bool expect_token(lexer_t* lexer, token_t* res, int count, ...) {
 	va_list args;
 	va_start(args, count);
 
-	for (size_t i = 0; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		token_type_t type = va_arg(args, token_type_t);
 		if (type == token.type) {
 			va_end(args);
@@ -195,19 +210,15 @@ bool find_state_by_name(const sarray_string_t* state_names, const sv_t* name, si
 	return false;
 }
 
-// (dfa|nfa|enfa) no_of_states no_of_transitions (initial_state0, initial_state1, ...) (final_state0, final_state1, ...) alphabet
-// (s state_name)*
-// (t start_state_name dest_state_name symbol)*
+// (dfa|nfa|enfa) no_of_states:int no_of_transitions:int (initial_state0:int, initial_state1:int, ...) (final_state0:int, final_state1:int, ...) alphabet:str
+// (s state_name:str)*
+// (t start_state_name:str dest_state_name:str symbol:char)*
 
 loader_result_type_t load(const string path, loader_result_t* res) {
 	sb_t file_contents_builder = sb_read_file(path);
-
- defer: {
-		sb_free(&file_contents_builder);
-	}
-	
 	if (file_contents_builder.items == NULL) return LOADER_ERROR;
 	sv_t file_contents = sb_build(&file_contents_builder);
+	sb_free(&file_contents_builder);
 
 	lexer_t lexer = lexer_init(file_contents);
 	token_t temp;
@@ -267,7 +278,7 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 	}
 
 	token_t alphabet_tok;
-	EXPECT(alphabet_tok, 1, IDENT);
+	EXPECT(alphabet_tok, 1, STRING);
 	res->dfa.alphabet = sv_to_str(&alphabet_tok.view);
 
 	res->dfa.state_names.size = state_count;
@@ -276,7 +287,7 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		EXPECT(temp, 1, OP_S);
 
 		token_t state_name_tok;
-		EXPECT(state_name_tok, 1, IDENT);
+		EXPECT(state_name_tok, 1, STRING);
 		res->dfa.state_names.items[i] = sv_to_str(&state_name_tok.view);
 	}
 
@@ -288,15 +299,15 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		EXPECT(temp, 1, OP_T);
 		
 		token_t start_state_tok, end_state_tok;
-		EXPECT(start_state_tok, 1, IDENT);
-		EXPECT(end_state_tok, 1, IDENT);
+		EXPECT(start_state_tok, 1, STRING);
+		EXPECT(end_state_tok, 1, STRING);
 		
 		u32 start_state, end_state;
 		if (!find_state_by_name(&res->dfa.state_names, &start_state_tok.view, (size_t*)&start_state)) goto loader_error;
 		if (!find_state_by_name(&res->dfa.state_names, &end_state_tok.view, (size_t*)&end_state)) goto loader_error;
 
 		token_t sym_tok;
-		EXPECT(sym_tok, 1, IDENT);
+		EXPECT(sym_tok, 1, CHAR);
 		
 		if (sym_tok.view.count != 1) goto loader_error;
 		if (!string_contains(sym_tok.view.items[1], res->dfa.alphabet)) goto loader_error;

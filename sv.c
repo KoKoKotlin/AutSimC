@@ -142,7 +142,7 @@ sv_t sv_from_cstr(const char* str) {
 }
 
 char* sv_to_str(const sv_t* sv) {
-	char* str = calloc(sizeof(char), sv->count + 1);
+	char* str = calloc(sv->count + 1, sizeof(char));
 	memcpy(str, sv->items, sv->count * sizeof(char));
 	return str;
 }

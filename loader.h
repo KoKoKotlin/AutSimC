@@ -10,8 +10,20 @@
 #include "utils.h"
 #include "dfa.h"
 
+#define ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", __VA_ARGS__)
+#define TT_NAME(toktype) token_type_names[toktype]
+#define LRES_NAME(res) loader_result_names[res]
+
+#define EXPECT(var_name, count, ...) \
+	if (!expect_token(&lexer, &var_name, count, __VA_ARGS__)) { \
+		expect_error(&var_name, path, count, __VA_ARGS__);  \
+		goto loader_error;					  \
+	}
+
 typedef enum {
 	IDENT,
+	STRING,
+	CHAR,
 	NUMBER,
 	OP_S,
 	OP_T,
@@ -22,6 +34,7 @@ typedef enum {
 	CLOSING_PAREN,
 	COMMA,
 	TOK_EOF,
+	TOK_ERROR,
 	TOKEN_TYPE_COUNT,
 } token_type_t;
 
@@ -63,10 +76,41 @@ typedef enum {
 	LOADER_RESULT_COUNT,
 } loader_result_type_t;
 
+static string loader_result_names[4] = {
+	"DFA",
+	"NFA",
+	"ENFA",
+	"LOADER_ERROR",
+};
+
+static string token_type_names[TOKEN_TYPE_COUNT] = {
+	"IDENT",
+	"STRING",
+	"CHAR",
+	"NUMBER",
+	"OP_S",
+	"OP_T",
+	"OP_DFA",
+	"OP_NFA",
+	"OP_ENFA",
+	"OPENING_PAREN",
+	"CLOSING_PAREN",
+	"ERROR",
+	"EOF",
+};
+
 CREATE_SIZED_ARRAY(token_type_t);
 typedef sarray_token_type_t_t sarray_token_type_t;
 
 loader_result_type_t load(const string, loader_result_t*);
 char* loader_result_to_string(loader_result_type_t);
+lexer_t lexer_init(sv_t view);
+token_t error_tok(lexer_t* lexer, const string msg);
+token_t next_token(lexer_t* lexer);
+void debug_print_token(const token_t* token);
+void expect_error(const token_t* token, const string path, int count, ...);
+bool expect_token(lexer_t* lexer, token_t* res, int count, ...);
+bool tok_type_equal(void* obj1, void* obj2);
+token_type_t get_token_type(sv_t* view);
 
 #endif

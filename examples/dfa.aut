@@ -1,10 +1,10 @@
-dfa 3 6 1 1 (0) (0) ab
-s a
-s b
-s c
-t a b a
-t a c b
-t b a b
-t b c a
-t c c a
-t c c b
+dfa 3 6 1 1 (0) (0) "ab"
+s "a"
+s "b"
+s "c"
+t "a" "b" 'a'
+t "a" "c" 'b'
+t "b" "a" 'b'
+t "b" "c" 'a'
+t "c" "c" 'a'
+t "c" "c" 'b'
