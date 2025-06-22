@@ -20,6 +20,7 @@ typedef enum {
 	OP_ENFA,
 	OPENING_PAREN,
 	CLOSING_PAREN,
+	COMMA,
 	TOK_EOF,
 	TOKEN_TYPE_COUNT,
 } token_type_t;

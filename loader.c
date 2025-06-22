@@ -3,9 +3,18 @@
 #define ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", __VA_ARGS__)
 #define TT_NAME(toktype) token_type_names[toktype]
 
-// TODO: add checking of input and proper errors with loc and reason
+#define EXPECT(var_name, count, ...) \
+	if (!expect_token(&lexer, &var_name, count, __VA_ARGS__)) { \
+		expect_error(&var_name, path, count, __VA_ARGS__);  \
+		goto loader_error;					  \
+	}
 
-// (dfa|nfa|enfa) no_of_states no_of_transitions (initial_state0, initial_state1, ...) (final_state0, final_state1, ...) alphabet
+
+// TODO: still add sanity checks
+// TODO: add string/char parsing/toktype
+// TODO: add string as state name, char as transition sym
+
+// (dfa|nfa|enfa) no_of_states no_of_transitions no_of_initial_states no_of_final_states (initial_state0, initial_state1, ...) (final_state0, final_state1, ...) alphabet
 // (s state_name)*
 // (t start_state_name dest_state_name symbol)*
 
@@ -54,6 +63,8 @@ token_type_t get_token_type(sv_t* view) {
 		return OPENING_PAREN;
 	} else if (sv_cmp_str(view, ")")) {
 		return CLOSING_PAREN;
+	} else if (sv_cmp_str(view, ",")) {
+		return COMMA;
 	}
 
 	size_t res;
@@ -95,7 +106,7 @@ token_t next_token(lexer_t* lexer) {
 	char* start = lexer->view.items;
 	for (size_t i = 0; ; ++i) {
 		char next = start[i];
-		if (next == '(' || next == ')') {
+		if (next == '(' || next == ')' || next == ',') {
 			tok.col = lexer->col;
 			tok.row = lexer->row;
 			tok.view = sv_chopi(&lexer->view, 1);
@@ -184,113 +195,119 @@ bool find_state_by_name(const sarray_string_t* state_names, const sv_t* name, si
 	return false;
 }
 
+// (dfa|nfa|enfa) no_of_states no_of_transitions (initial_state0, initial_state1, ...) (final_state0, final_state1, ...) alphabet
+// (s state_name)*
+// (t start_state_name dest_state_name symbol)*
+
 loader_result_type_t load(const string path, loader_result_t* res) {
 	sb_t file_contents_builder = sb_read_file(path);
+
+ defer: {
+		sb_free(&file_contents_builder);
+	}
+	
 	if (file_contents_builder.items == NULL) return LOADER_ERROR;
 	sv_t file_contents = sb_build(&file_contents_builder);
-	sb_free(&file_contents_builder);
 
 	lexer_t lexer = lexer_init(file_contents);
 	token_t temp;
 
 	token_t op_type;
-	if (!expect_token(&lexer, &op_type, 3, OP_DFA, OP_NFA, OP_ENFA)) {
-		expect_error(&op_type, path, 3, OP_DFA, OP_NFA, OP_ENFA);
-		goto loader_error;
+	EXPECT(op_type, 3, OP_DFA, OP_NFA, OP_ENFA);
+	loader_result_type_t res_type;
+
+	switch (op_type.type) {
+	case OP_DFA: res_type = DFA; break;
+	case OP_NFA: res_type = NFA; break;
+	case OP_ENFA: res_type = ENFA; break;
+	default: UNREACHABLE();
 	}
 
-	token_t state_count;
-	if (!expect_token(&lexer, &state_count, 1, NUMBER)) {
-		expect_error(&state_count, path, 1, NUMBER);
-		goto loader_error;
-	}
+	token_t state_count_tok;
+	EXPECT(state_count_tok, 1, NUMBER);
+	size_t state_count;
+	sv_tol(&state_count_tok.view, 10, (long*)&state_count);
 	
-	token_t transition_count;
-	if (!expect_token(&lexer, &transition_count, 1, NUMBER)) {
-		expect_error(&transition_count, path, 1, NUMBER);
-		goto loader_error;
+	token_t transition_count_tok;
+	EXPECT(transition_count_tok, 1, NUMBER);
+	size_t transition_count;
+	sv_tol(&transition_count_tok.view, 10, (long*)&transition_count);
+	
+	token_t initial_state_count_tok;
+	EXPECT(initial_state_count_tok, 1, NUMBER);
+	size_t initial_state_count;
+	sv_tol(&initial_state_count_tok.view, 10, (long*)&initial_state_count);
+
+	token_t final_state_count_tok;
+	EXPECT(final_state_count_tok, 1, NUMBER);
+	size_t final_state_count; 
+	sv_tol(&final_state_count_tok.view, 10, (long*)&final_state_count);
+
+	EXPECT(temp, 1, OPENING_PAREN);
+	token_t initial_state_tok;
+	EXPECT(initial_state_tok, 1, NUMBER);
+	EXPECT(temp, 1, CLOSING_PAREN);
+	
+	EXPECT(temp, 1, OPENING_PAREN);
+	res->dfa.final_states.size = final_state_count;
+	res->dfa.final_states.items = calloc(final_state_count, sizeof(size_t));
+	
+	for (size_t i = 0; i < final_state_count; ++i) {
+		token_t final_state_tok;
+		EXPECT(final_state_tok, 1, NUMBER);
+		size_t final_state;
+		sv_tol(&final_state_tok.view, 10, (long*)&final_state);
+		res->dfa.final_states.items[i] = final_state;
+
+		if (i + 1 == final_state_count) {
+			EXPECT(temp, 1, CLOSING_PAREN);
+		} else {
+			EXPECT(temp, 1, COMMA);
+		}
 	}
 
-	if (!expect_token(&lexer, &temp, 1, OPENING_PAREN)) {
-		expect_error(&temp, path, 1, OPENING_PAREN);
-		goto loader_error;
+	token_t alphabet_tok;
+	EXPECT(alphabet_tok, 1, IDENT);
+	res->dfa.alphabet = sv_to_str(&alphabet_tok.view);
+
+	res->dfa.state_names.size = state_count;
+	res->dfa.state_names.items = calloc(state_count, sizeof(string));
+	for (size_t i = 0; i < state_count; i++) {
+		EXPECT(temp, 1, OP_S);
+
+		token_t state_name_tok;
+		EXPECT(state_name_tok, 1, IDENT);
+		res->dfa.state_names.items[i] = sv_to_str(&state_name_tok.view);
 	}
-	// buf = sv_chopc(&line, ' ', false);
-	// if (!sv_tol(&buf, 10, (long*)&res->dfa.initial_state)) goto loader_error;
-	// buf = sv_chopc(&line, ' ', false);
-	// size_t final_state_count;
-	// if (!sv_tol(&buf, 10, (long*)&final_state_count)) goto loader_error;
 
-	// res->dfa.final_states.size = final_state_count;
-	// res->dfa.final_states.items = calloc(final_state_count, sizeof(size_t));
-	
-	// // TOOD: make sanity checks that the data is available
-	// buf = sv_chopc(&line, ')', false);
-	// sv_drop(&buf, 1);
-	// if (!sv_tol(&buf, 10, (long*)&res->dfa.initial_state)) goto loader_error;
-	// sv_drop(&line, 1);
-	
-	// buf = sv_chopc(&line, ')', false);
-	// sv_drop(&buf, 1);
-	// sv_t final_state_buf;
-	// for (size_t i = 0; i < final_state_count; i++) {
-		// if (i + 1 == final_state_count) {
-			// final_state_buf = buf;
-		// } else {
-			// final_state_buf = sv_chopc(&buf, ',', false);
-		// }
+	res->dfa.transitions = ht_new(transition_count, &hashfunc_u32);
+        PAIR_STRUCT(u32, u32) *pairs_temp = calloc(transition_count, sizeof(PAIR_STRUCT(u32, u32)));
+	string syms = calloc(transition_count + 1, sizeof(char));
 
-		// size_t final_state_idx;
-		// if (!sv_tol(&final_state_buf, 10, (long*)&final_state_idx)) goto loader_error;
-		// res->dfa.final_states.items[i] = final_state_idx;
-
-		// if (*buf.items == ' ') sv_drop(&buf, 1);
-	// }
-	// line.items = line.items + 1;
-
-	// buf = sv_chopc(&line, '\n', false);
-	// res->dfa.alphabet = sv_to_str(&buf);
-
-	// res->dfa.state_names.size = state_count;
-	// res->dfa.state_names.items = calloc(state_count, sizeof(string));
-	// for (size_t i = 0; i < state_count; i++) {
-		// buf = sv_next_line(&file_contents);
-		// sv_t prefix = sv_chopc(&buf, ' ', false);
+	for (size_t i = 0; i < transition_count; i++) {
+		EXPECT(temp, 1, OP_T);
 		
-		// if (!sv_cmp_str(&prefix, "s")) goto loader_error;
-		// buf = sv_chopc(&buf, '\n', false);
-		// res->dfa.state_names.items[i] = sv_to_str(&buf);
-	// }
-
-	// res->dfa.transitions = ht_new(transition_count, &hashfunc_u32);
-        // PAIR_STRUCT(u32, u32) *pairs_temp = calloc(transition_count, sizeof(PAIR_STRUCT(u32, u32)));
-	// string syms = calloc(transition_count + 1, sizeof(char));
-
-	// for (size_t i = 0; i < transition_count; i++) {
-		// buf = sv_next_line(&file_contents);
-		// sv_t prefix = sv_chopc(&buf, ' ', false);
-
-		// if (!sv_cmp_str(&prefix, "t")) goto loader_error;
-
-		// sv_t state_name_1 = sv_chopc(&buf, ' ', false); 
-		// size_t state1;
-		// if (!find_state_by_name(&res->dfa.state_names, &state_name_1, &state1)) goto loader_error;
+		token_t start_state_tok, end_state_tok;
+		EXPECT(start_state_tok, 1, IDENT);
+		EXPECT(end_state_tok, 1, IDENT);
 		
-		// sv_t state_name_2 = sv_chopc(&buf, ' ', false); 
-		// size_t state2;
-		// if (!find_state_by_name(&res->dfa.state_names, &state_name_2, &state2)) goto loader_error;
+		u32 start_state, end_state;
+		if (!find_state_by_name(&res->dfa.state_names, &start_state_tok.view, (size_t*)&start_state)) goto loader_error;
+		if (!find_state_by_name(&res->dfa.state_names, &end_state_tok.view, (size_t*)&end_state)) goto loader_error;
 
-		// char sym = *buf.items;
-		// if (sym == '\n') goto loader_error;
-
-		// //printf("%d %d %c\n", state1, state2, sym);
-		// pairs_temp[i] = PAIR(u32, u32, state1, state2);
-		// syms[i] = sym;
-	// }
-	// ARRAY_TO_SIZED(pairs_temp, transition_count, pair_u32_u32_t, pairs);
-	// res->dfa.transitions = dfa_create_transitions(pairs, syms);
+		token_t sym_tok;
+		EXPECT(sym_tok, 1, IDENT);
+		
+		if (sym_tok.view.count != 1) goto loader_error;
+		if (!string_contains(sym_tok.view.items[1], res->dfa.alphabet)) goto loader_error;
+		
+		pairs_temp[i] = PAIR(u32, u32, start_state, end_state);
+		syms[i] = sym_tok.view.items[i];
+	}
+	ARRAY_TO_SIZED(pairs_temp, transition_count, pair_u32_u32_t, pairs);
+	res->dfa.transitions = dfa_create_transitions(pairs, syms);
 	
-	// return res_type;
+	return res_type;
 
  loader_error:
 	return LOADER_ERROR;

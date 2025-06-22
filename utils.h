@@ -6,9 +6,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 typedef char* string;
 typedef uint32_t u32;
+
+#define UNREACHABLE() assert("Unreachable" && 0)
+#define TODO(s) assert("TODO: "s && 0)
 
 #define PAIR_STRUCT(type1, type2) pair_##type1##_##type2##_t
 #define CREATE_PAIR_STRUCT(type1, type2) typedef struct { type1 v1; type2 v2; } PAIR_STRUCT(type1, type2);
