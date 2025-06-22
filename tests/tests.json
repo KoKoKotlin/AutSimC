@@ -1,0 +1,26 @@
+{
+		"compile_command": "gcc -I. $INPUT_FILE sv.c utils.c loader.c dfa.c hashtable.c -o $OUTPUT_FILE",
+		"run_command": "./$INPUT_FILE $ARGS",
+		"tests": [
+				{
+						"file": "01-lexer.c",
+						"args": ""
+				},
+				{
+						"file": "02-lexer-error.c",
+						"args": ""
+				},
+				{
+						"file": "03-lexer-error.c",
+						"args": ""
+				},
+				{
+						"file": "04-test-dfa.c",
+					  "args": ""
+				},
+				{
+						"file": "dfa-loader.c",
+						"args": ""
+				}
+		]
+}
