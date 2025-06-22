@@ -22,7 +22,7 @@ int main() {
 	};
 	ARRAY_TO_SIZED(pairs_temp, 6, pair_u32_u32_t, pairs);
 	string syms = "abbaab";
-	hashtable_t transitions = aut_create_transitions(pairs, syms);
+	sarray_transition_t transitions = aut_create_transitions(pairs, syms);
 	string alphabet = "ab";
 	
 	aut_t aut = aut_new(DFA, state_names, final_states, initial_states, transitions, alphabet); 

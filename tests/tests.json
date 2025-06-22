@@ -1,5 +1,5 @@
 {
-		"compile_command": "gcc -g -ggdb -I. $INPUT_FILE sv.c utils.c loader.c aut.c hashtable.c -o $OUTPUT_FILE",
+		"compile_command": "gcc -g -ggdb -I./include $INPUT_FILE src/sv.c src/utils.c src/loader.c src/aut.c src/hashtable.c -o $OUTPUT_FILE",
 		"run_command": "./$INPUT_FILE $ARGS",
 		"tests": [
 				{
@@ -19,7 +19,7 @@
 					  "args": ""
 				},
 				{
-						"file": "dfa-loader.c",
+						"file": "05-dfa-loader.c",
 						"args": ""
 				}
 		]

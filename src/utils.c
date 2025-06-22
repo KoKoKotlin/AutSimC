@@ -32,3 +32,10 @@ int sarray_index_of(void* obj, sarray_t* arr, size_t item_size, comperator_t com
 	}
 	return -1;
 }
+
+void list_resize(list_t* list, size_t item_size) {
+	if (list->capacity > list->count) return;
+
+	list->capacity *= 2;
+	list->items = realloc(list->items, list->capacity * item_size);
+}

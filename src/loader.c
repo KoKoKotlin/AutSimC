@@ -310,7 +310,7 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		token_t final_state_tok;
 		EXPECT(final_state_tok, 1, STRING);
 		
-		size_t final_state = SARRAY_INDEX_OF(&final_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
+		int final_state = SARRAY_INDEX_OF(&final_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
 
 		if (final_state == -1) return LOADER_ERROR;
 		
@@ -321,10 +321,8 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		}
 	}
 
-	res->aut.transitions = ht_new(transition_count, &hashfunc_u32);
-        PAIR_STRUCT(u32, u32) *pairs_temp = calloc(transition_count, sizeof(PAIR_STRUCT(u32, u32)));
-	string syms = calloc(transition_count + 1, sizeof(char));
-
+	res->aut.transitions.size = transition_count;
+	res->aut.transitions.items = calloc(transition_count, sizeof(transition_t));
 	for (size_t i = 0; i < transition_count; i++) {
 		EXPECT(temp, 1, OP_T);
 		
@@ -341,13 +339,11 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		EXPECT(sym_tok, 1, CHAR);
 		
 		if (!string_contains(sym_tok.view.items[0], res->aut.alphabet)) goto loader_error;
-		
-		pairs_temp[i] = PAIR(u32, u32, (u32)start_state, (u32)end_state);
-		syms[i] = sym_tok.view.items[0];
+		transition_t* t = &res->aut.transitions.items[i];
+		t->start_state = start_state;
+		t->end_state = end_state;
+		t->transition_sym = sym_tok.view.items[0];
 	}
-	ARRAY_TO_SIZED(pairs_temp, transition_count, pair_u32_u32_t, pairs);
-	res->aut.transitions = aut_create_transitions(pairs, syms);
-
 	EXPECT(temp, 1, CLOSING_BRACE);
 	
 	return SUCCESS; 

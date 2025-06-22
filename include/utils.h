@@ -10,6 +10,7 @@
 
 typedef char* string;
 typedef uint32_t u32;
+typedef unsigned char u8;
 
 #define UNREACHABLE() assert("Unreachable" && 0)
 #define TODO(s) assert("TODO: "s && 0)
@@ -18,19 +19,38 @@ typedef uint32_t u32;
 #define CREATE_PAIR_STRUCT(type1, type2) typedef struct { type1 v1; type2 v2; } PAIR_STRUCT(type1, type2);
 #define PAIR(type1, type2, v1_, v2_) ((PAIR_STRUCT(type1, type2)){ .v1 = v1_, .v2 = v2_ })
 
-#define CREATE_SIZED_ARRAY(type) typedef struct { size_t size; type* items; } sarray_##type##_t
+typedef struct {
+	size_t size;
+	void* items;
+} sarray_t;
+#define CREATE_SIZED_ARRAY(type) typedef struct { size_t size; type* items; } sarray_##type##_t;
 #define ARRAY_TO_SIZED(array, array_size, type, name)		\
 	sarray_##type##_t name;					\
 	(name).size = array_size;				\
 	(name).items = malloc(array_size * sizeof(type));	\
 	memcpy((name).items, (array), array_size * sizeof(type));
 
-#define SARRAY(type, count, data_ptr) (sarray_t) { .size = (count), .items = (data_ptr) })
-
 typedef struct {
-	size_t size;
+	size_t count;
+	size_t capacity;
 	void* items;
-} sarray_t;
+} list_t;
+void list_resize(list_t* list, size_t item_size);
+#define CREATE_LIST(type) typedef struct { size_t count; size_t capacity; type* items; } list_##type##_t;
+#define INIT_LIST(list, type, init_cap) do {			\
+		(list).count = 0;				\
+		(list).capacity = (init_cap);			\
+		(list).items = calloc(init_cap, sizeof(type));	\
+	} while(0)
+#define LIST_APPEND(list, type, item) do { \
+		list_resize((list_t*)&list, sizeof(type)); \
+		list.items[list.count++] = (item);	   \
+	} while(0) 
+#define FREE_CONTAINER(container) free((container).items);
+
+CREATE_LIST(u32);
+
+#define SARRAY(type, count, data_ptr) (sarray_t) { .size = (count), .items = (data_ptr) })
 
 typedef bool(*comperator_t)(void*, void*);
 

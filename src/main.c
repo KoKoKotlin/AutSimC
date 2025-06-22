@@ -11,6 +11,8 @@
 #include "aut.h"
 #include "utils.h"
 
+// TODO: introduce an arena allocator especially when contructing auts and testing transitios
+
 #define INSERT_STR(dest, src) do {			\
 		(dest) = malloc(strlen(src));		\
 		memcpy((dest), (src), strlen(src));	\

@@ -26,17 +26,26 @@ static string auttype_names[] = {
 };
 
 typedef struct {
+	size_t start_state;
+	size_t end_state;
+	char transition_sym;
+} transition_t;
+
+CREATE_SIZED_ARRAY(transition_t);
+typedef sarray_transition_t_t sarray_transition_t;
+
+typedef struct {
 	aut_type_t type;
 	sarray_string_t state_names;
 	sarray_size_t final_states;
 	sarray_size_t initial_states;
-	hashtable_t transitions;
+	sarray_transition_t transitions;
 	char* alphabet;
 } aut_t;
 
-aut_t aut_new(aut_type_t, sarray_string_t, sarray_size_t, sarray_size_t, hashtable_t, char*);
-hashtable_t aut_create_transitions(sarray_pair_u32_t, string);
-u32* aut_read_single(const aut_t*, size_t, char);
+aut_t aut_new(aut_type_t, sarray_string_t, sarray_size_t, sarray_size_t, sarray_transition_t, char*);
+sarray_transition_t aut_create_transitions(sarray_pair_u32_t, string);
+sarray_u32_t aut_read_single(const aut_t*, size_t, char);
 bool aut_accepts(const aut_t*, string);
 void aut_debug_print(const aut_t*);
 #endif

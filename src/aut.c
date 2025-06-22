@@ -4,24 +4,28 @@ u32 get_key(u32 start_idx, char sym) {
 	return start_idx << 8 | (u32)sym;
 }
 
-hashtable_t aut_create_transitions(sarray_pair_u32_t pairs, string transition_symbols) {
+sarray_transition_t aut_create_transitions(sarray_pair_u32_t pairs, string transition_symbols) {
 	assert(pairs.size == strlen(transition_symbols) && "AUT CREATE TRANSITION both arrays have to have same size!");
 
-	hashtable_t transitions = ht_new(32, &hashfunc_u32);
+	sarray_transition_t transitions = { 0 };
+	transitions.size = pairs.size;
+	transitions.items = calloc(pairs.size, sizeof(transition_t));
 	for (size_t i = 0; i < pairs.size; ++i) {
 		PAIR_STRUCT(u32, u32) pair = pairs.items[i];
 		u32 start_idx = pair.v1;
 		u32 end_idx = pair.v2;
 		char transition_sym = transition_symbols[i];
+		transition_t *t = &transitions.items[i];
 
-		u32 key = get_key(start_idx, transition_sym);
-		ht_insert(&transitions, key, end_idx);
+		t->start_state = start_idx;
+		t->end_state = end_idx;
+		t->transition_sym = transition_sym;
 	}
 
 	return transitions;
 }
 
-aut_t aut_new(aut_type_t type, sarray_string_t state_names, sarray_size_t final_states, sarray_size_t initial_states, hashtable_t transitions, char* alphabet) {
+aut_t aut_new(aut_type_t type, sarray_string_t state_names, sarray_size_t final_states, sarray_size_t initial_states, sarray_transition_t transitions, char* alphabet) {
 	aut_t aut = {
 		.type = type,
 		.state_names = state_names,
@@ -33,9 +37,21 @@ aut_t aut_new(aut_type_t type, sarray_string_t state_names, sarray_size_t final_
 	return aut; 
 }
 
-u32* aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
+sarray_u32_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
 	assert(strchr(aut->alphabet, c) != NULL && "The given char is not in the auts alphabet!");
-	return ht_get(&aut->transitions, get_key(curr_state_idx, c));
+	list_u32_t end_states = { 0 };
+	INIT_LIST(end_states, u32, 10);
+	
+	for (size_t i = 0; i < aut->transitions.size; ++i) {
+		transition_t* t = &aut->transitions.items[i];
+
+		if (t->start_state != curr_state_idx || t->transition_sym != c) continue;
+		LIST_APPEND(end_states, size_t, t->end_state);
+	}
+
+	ARRAY_TO_SIZED(end_states.items, end_states.count, u32, end_state_array);
+	FREE_CONTAINER(end_states);
+	return end_state_array;
 }
 
 bool aut_is_final_state(const aut_t* aut, u32 state_idx) {
@@ -48,39 +64,48 @@ bool aut_is_final_state(const aut_t* aut, u32 state_idx) {
 
 bool aut_accepts(const aut_t* aut, string input) {
 	if (aut->type == DFA) {
-	u32 current_state = aut->initial_states.items[0];
-	for (size_t i = 0; i < strlen(input); ++i) {
-		char next = input[i];
-		u32* next_state = aut_read_single(aut, current_state, next);
-		if (next_state == NULL) return false; // symbol not in alphabet
-		current_state = *next_state;
-	}
+	    u32 current_state = aut->initial_states.items[0];
+	    for (size_t i = 0; i < strlen(input); ++i) {
+		    char next = input[i];
+		    sarray_u32_t next_states = aut_read_single(aut, current_state, next);
+		    if (next_states.size == 0) return false; // symbol not in alphabet
+		    current_state = next_states.items[0]; // there can only be one next state and also there has to one
+		    FREE_CONTAINER(next_states);
+	    }
 
-	return aut_is_final_state(aut, current_state);
+	    return aut_is_final_state(aut, current_state);
 	} else {
 		TODO("accept not implemented for NFA and ENFA!");
 	}
 }
 
-bool aut_check_valid(const aut_t* aut) {
-	if (aut->type == DFA) {
-	    for (size_t i = 0; i < aut->state_names.size; ++i) {
-		    for(char* c = aut->alphabet; *c != '\0'; c++) {
-			    if (aut_read_single(aut, i, *c) == NULL) return false;
-		    }
-	    }
+bool check_eps_transisitions(const aut_t* aut) {
+	return false;
+}
 
-	    if (aut->initial_states.size != 1) return false;
+bool aut_check_valid(const aut_t* aut) {
+	    if (aut->initial_states.size == 0) return false;
+	    if (aut->final_states.size == 0) return false;
 	    if (aut->initial_states.items[0] >= aut->state_names.size) return false;
 
 	    for (size_t i = 0; i < aut->final_states.size; ++i) {
 		    if (aut->final_states.items[i] >= aut->state_names.size) return false;
 	    }
 
-	    return true;
-	} else {
-		TODO("check_valid not implemented for NFA and ENFA!");
+	if (aut->type == DFA) {
+		for (size_t i = 0; i < aut->state_names.size; ++i) {
+			for(char* c = aut->alphabet; *c != '\0'; c++) {
+				sarray_u32_t next_state = aut_read_single(aut, i, *c);
+				bool invalid = next_state.size == 0;
+				FREE_CONTAINER(next_state);
+				if (invalid) return false;
+			}		    	   
+		}
+		if (aut->initial_states.size != 1) return false;
+	} else if (aut->type == NFA) {
 	}
+
+	return true;
 }
 
 void aut_debug_print(const aut_t* aut) {
@@ -99,10 +124,15 @@ void aut_debug_print(const aut_t* aut) {
 	printf("Alphabet: %s\n", aut->alphabet);
 	
 	for (u32 i = 0; i < aut->state_names.size; ++i) {
-		for(char* c = aut->alphabet; *c != '\0'; c++) {
-			u32* next_state_ptr = aut_read_single(aut, i, *c);
-			u32 next_state = *next_state_ptr;
-			printf("  - Transition: %s(%u) & %c -> %s(%u)\n", aut->state_names.items[i], i, *c, aut->state_names.items[next_state], next_state);
+		for (char* c = aut->alphabet; *c != '\0'; c++) {
+			sarray_u32_t next_states = aut_read_single(aut, i, *c);
+			printf("  - Transition: %s(%u) & %c ->", aut->state_names.items[i], i, *c);
+			for (size_t i = 0; i < next_states.size; ++i) {
+				u32 next_state = next_states.items[i];
+				printf(" %s(%u)", aut->state_names.items[next_state], next_state);
+			}
+			printf("\n");
+			FREE_CONTAINER(next_states);
 		}
 	}
 }
