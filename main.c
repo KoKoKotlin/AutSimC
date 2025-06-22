@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -7,10 +8,9 @@
 #include <ctype.h>
 
 #include "sv.h"
-#include "dfa.h"
+#include "aut.h"
 #include "utils.h"
 
-#define TODO(str) (assert(false && str))
 #define INSERT_STR(dest, src) do {			\
 		(dest) = malloc(strlen(src));		\
 		memcpy((dest), (src), strlen(src));	\

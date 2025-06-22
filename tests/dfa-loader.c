@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include <dfa.h>
+#include <aut.h>
 #include <loader.h>
 
 int main() {
@@ -8,8 +8,13 @@ int main() {
 
 	loader_result_t res = { 0 };
 	loader_result_type_t res_type = load(path, &res);
-	if (res_type != DFA) {
-		fprintf(stderr, "Loader has loaded wrong type! Expected: %s, Actual: %s.\n", LRES_NAME(DFA), LRES_NAME(res_type));
+	if (res_type != SUCCESS) {
+		fprintf(stderr, "Loader failed to load example %s! Expected: %s, Actual: %s.\n", path);
+		exit(-1);
+	}
+
+	if (res.aut.type != DFA) {
+		fprintf(stderr, "Loader loaded wrong type of automaton! Expected: %s, Actual: %s.\n", AUTTYPE_NAME(DFA), AUTTYPE_NAME(res.aut.type));
 		exit(-1);
 	}
 	
@@ -23,11 +28,12 @@ int main() {
 		"aba"
 	};
 
+	aut_debug_print(&res.aut);
 	bool expected_results[] = { true, true, false, false, false, false, true };
 	for (size_t i = 0; i < 7; i++) {
 		string curr = test_inputs[i];
-		if (dfa_accepts(&res.dfa, curr) != expected_results[i]) {
-			fprintf(stderr, "DFA failed on input %s! Expected: %d, Actual: %d.", curr, dfa_accepts(&res.dfa, curr), expected_results[i]);
+		if (aut_accepts(&res.aut, curr) != expected_results[i]) {
+			fprintf(stderr, "DFA failed on input %s! Expected: %d, Actual: %d.", curr, expected_results[i], aut_accepts(&res.aut, curr));
 			exit(-1);
 		}
 	}

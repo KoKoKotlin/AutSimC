@@ -1,17 +1,18 @@
 CC = gcc
-GEN_OBJECTS = loader.o dfa.o hashtable.o sv.o utils.o
+GEN_OBJECTS = loader.o aut.o hashtable.o sv.o utils.o
 OBJECTS = main.o $(GEN_OBJECTS)
-TEST_OBJECTS = test.o $(GEN_OBJECTS)
 CFLAGS = -g -ggdb -O0 -Wall -Wextra -std=c99
+
+.PHONY: clean all 
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-all: $(OBJECTS)
-	$(CC) $(OBJECTS) -o test
+lexer: $(GEN_OBJECTS)
+	$(CC) lexer_check.c $(GEN_OBJECTS) -o lexer
 
-test: $(TEST_OBJECTS) 
-	$(CC) $(TEST_OBJECTS) -o test
+all: $(OBJECTS)
+	$(CC) $(OBJECTS) -o main
 
 clean:
 	rm -f test main $(TEST_OBJECTS) $(OBJECTS)

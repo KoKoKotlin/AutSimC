@@ -24,3 +24,11 @@ bool sarray_contains(void* obj, sarray_t* arr, size_t item_size, comperator_t co
 	}
 	return false;
 }
+
+int sarray_index_of(void* obj, sarray_t* arr, size_t item_size, comperator_t comperator) {
+	for (size_t i = 0; i < arr->size; i++) {
+		void* obj2 = (void*)((uint8_t*)arr->items + i * item_size);
+		if (comperator(obj, obj2)) return (int)i;
+	}
+	return -1;
+}

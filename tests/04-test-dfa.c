@@ -1,5 +1,5 @@
 #include <utils.h>
-#include <dfa.h>
+#include <aut.h>
 
 int main() {
 	string state_names_temp[] = {
@@ -8,6 +8,8 @@ int main() {
 		"F"
 	};
 	ARRAY_TO_SIZED(state_names_temp, 3, string, state_names);
+	size_t initial_states_temp[] = { 0 };
+	ARRAY_TO_SIZED(initial_states_temp, 1, size_t, initial_states);
 	size_t final_states_temp[] = { 0, 1 };
 	ARRAY_TO_SIZED(final_states_temp, 2, size_t, final_states);
 	PAIR_STRUCT(u32, u32) pairs_temp[] = {
@@ -20,12 +22,12 @@ int main() {
 	};
 	ARRAY_TO_SIZED(pairs_temp, 6, pair_u32_u32_t, pairs);
 	string syms = "abbaab";
-	hashtable_t transitions = dfa_create_transitions(pairs, syms);
+	hashtable_t transitions = aut_create_transitions(pairs, syms);
 	string alphabet = "ab";
 	
-	dfa_t dfa = dfa_new(state_names, final_states, 0, transitions, alphabet); 
+	aut_t aut = aut_new(DFA, state_names, final_states, initial_states, transitions, alphabet); 
 
-	dfa_debug_print(&dfa);
+	aut_debug_print(&aut);
 
 	string test_inputs[] = {
 		"aaa",
@@ -39,8 +41,8 @@ int main() {
 	
 	for (size_t i = 0; i < 5; i++) {
 		string curr = test_inputs[i];
-		if (dfa_accepts(&dfa, curr) != expected_results[i]) {
-			fprintf(stderr, "DFA failed on input %s! Expected: %d, Actual: %d.", curr, dfa_accepts(&dfa, curr), expected_results[i]);
+		if (aut_accepts(&aut, curr) != expected_results[i]) {
+			fprintf(stderr, "DFA failed on input %s! Expected: %d, Actual: %d.", curr, aut_accepts(&aut, curr), expected_results[i]);
 			exit(-1);
 		}
 	}

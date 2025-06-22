@@ -1,5 +1,5 @@
 {
-		"compile_command": "gcc -I. $INPUT_FILE sv.c utils.c loader.c dfa.c hashtable.c -o $OUTPUT_FILE",
+		"compile_command": "gcc -g -ggdb -I. $INPUT_FILE sv.c utils.c loader.c aut.c hashtable.c -o $OUTPUT_FILE",
 		"run_command": "./$INPUT_FILE $ARGS",
 		"tests": [
 				{

@@ -8,7 +8,7 @@
 
 #include "sv.h"
 #include "utils.h"
-#include "dfa.h"
+#include "aut.h"
 
 #define ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", __VA_ARGS__)
 #define TT_NAME(toktype) token_type_names[toktype]
@@ -27,11 +27,16 @@ typedef enum {
 	NUMBER,
 	OP_S,
 	OP_T,
+	OP_A,
+	OP_F,
+	OP_I,
 	OP_DFA,
 	OP_NFA,
 	OP_ENFA,
 	OPENING_PAREN,
 	CLOSING_PAREN,
+	OPENING_BRACE,
+	CLOSING_BRACE,
 	COMMA,
 	TOK_EOF,
 	TOK_ERROR,
@@ -64,14 +69,12 @@ typedef struct {
 } loader_error_t;
 
 typedef union {
-	dfa_t dfa;
+	aut_t aut;
 	loader_error_t error;
 } loader_result_t;
 
 typedef enum {
-	DFA,
-	NFA,
-	ENFA,
+	SUCCESS,
 	LOADER_ERROR,
 	LOADER_RESULT_COUNT,
 } loader_result_type_t;
@@ -90,13 +93,19 @@ static string token_type_names[TOKEN_TYPE_COUNT] = {
 	"NUMBER",
 	"OP_S",
 	"OP_T",
+	"OP_A",
+	"OP_F",
+	"OP_I",
 	"OP_DFA",
 	"OP_NFA",
 	"OP_ENFA",
 	"OPENING_PAREN",
 	"CLOSING_PAREN",
-	"ERROR",
+	"OPENING_BRACE",
+	"CLOSING_BRACE",
+	"COMMA",
 	"EOF",
+	"ERROR",
 };
 
 CREATE_SIZED_ARRAY(token_type_t);

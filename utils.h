@@ -44,9 +44,15 @@ CREATE_SIZED_ARRAY(u32);
 CREATE_SIZED_ARRAY(pair_u32_u32_t);
 typedef sarray_pair_u32_u32_t_t sarray_pair_u32_t;
 
+#define SARRAY_CONTAINS(obj, _sarray, item_size, comp) \
+	sarray_contains((void*)(obj), (sarray_t*)(_sarray), (item_size), (comp))
+#define SARRAY_INDEX_OF(obj, _sarray, item_size, comp) \
+	sarray_index_of((void*)(obj), (sarray_t*)(_sarray), (item_size), (comp))
+
 size_t hashfunc_u32(u32);
 bool string_contains(char c, const string syms);
 bool sarray_contains(void*, sarray_t*, size_t, comperator_t);
+int sarray_index_of(void* obj, sarray_t* arr, size_t item_size, comperator_t comperator);
 
 #endif
 

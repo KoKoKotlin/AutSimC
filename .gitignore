@@ -1,2 +1,4 @@
 tests/build
 *.o
+lexer_check.c
+lexer

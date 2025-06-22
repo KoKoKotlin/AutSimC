@@ -30,10 +30,20 @@ token_type_t get_token_type(sv_t* view) {
 		return OP_S;
 	} else if (sv_cmp_str(view, "t")) {
 		return OP_T;
+	} else if (sv_cmp_str(view, "a")) {
+		return OP_A;
+	} else if (sv_cmp_str(view, "f")) {
+		return OP_F;
+	} else if (sv_cmp_str(view, "i")) {
+		return OP_I;
 	} else if (sv_cmp_str(view, "(")) {
 		return OPENING_PAREN;
 	} else if (sv_cmp_str(view, ")")) {
 		return CLOSING_PAREN;
+	} else if (sv_cmp_str(view, "{")) {
+		return OPENING_BRACE;
+	} else if (sv_cmp_str(view, "}")) {
+		return CLOSING_BRACE;
 	} else if (sv_cmp_str(view, ",")) {
 		return COMMA;
 	}
@@ -88,7 +98,7 @@ token_t next_token(lexer_t* lexer) {
 	char* start = lexer->view.items;
 	for (size_t i = 0; ; ++i) {
 		char next = start[i];
-		if (next == '(' || next == ')' || next == ',') {
+		if (i == 0 && (next == '(' || next == ')' || next == ',' || next == '{' || next == '}')) {
 			tok.col = lexer->col;
 			tok.row = lexer->row;
 			tok.view = sv_chopi(&lexer->view, 1);
@@ -129,7 +139,7 @@ token_t next_token(lexer_t* lexer) {
 			lexer->current += i+1;
 			lexer->col += i+1;
 			break;
-		} else if (string_contains(next, " \n") || i == lexer->view.count) {
+		} else if (string_contains(next, " \n(){}\'\",") || i == lexer->view.count) {
 			tok.col = lexer->col;
 			tok.row = lexer->row;
 			tok.view = sv_chopi(&lexer->view, i);
@@ -200,20 +210,21 @@ char* loader_result_to_string(loader_result_type_t res) {
 		return loader_result_names[res];
 }
 
-bool find_state_by_name(const sarray_string_t* state_names, const sv_t* name, size_t* res) {
-	for (size_t i = 0; i < state_names->size; i++) {
-		if (sv_cmp_str(name, state_names->items[i])) {
-			*res = i;
-			return true;
-		}
-	}
-	return false;
+bool sv_cmp_helper(void* obj1, void* obj2) {
+	sv_t *sv = (sv_t*)obj1;
+	string *s = (string*)obj2;
+
+	return sv_cmp_str(sv, *s);
 }
-
-// (dfa|nfa|enfa) no_of_states:int no_of_transitions:int (initial_state0:int, initial_state1:int, ...) (final_state0:int, final_state1:int, ...) alphabet:str
-// (s state_name:str)*
-// (t start_state_name:str dest_state_name:str symbol:char)*
-
+/*
+(dfa|nfa|enfa)(state_count:int, initial_state_count:int, final_state_count:int, transition_count:int) {
+    a alphabet:string
+    (s state_name:string)*
+    i (initial_state_name:string)*
+    f (final_state_name:string)*
+    (t state1:string state2:string symbol:char)*
+}
+ */
 loader_result_type_t load(const string path, loader_result_t* res) {
 	sb_t file_contents_builder = sb_read_file(path);
 	if (file_contents_builder.items == NULL) return LOADER_ERROR;
@@ -225,73 +236,92 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 
 	token_t op_type;
 	EXPECT(op_type, 3, OP_DFA, OP_NFA, OP_ENFA);
-	loader_result_type_t res_type;
 
 	switch (op_type.type) {
-	case OP_DFA: res_type = DFA; break;
-	case OP_NFA: res_type = NFA; break;
-	case OP_ENFA: res_type = ENFA; break;
+	case OP_DFA: res->aut.type = DFA; break;
+	case OP_NFA: res->aut.type = NFA; break;
+	case OP_ENFA: res->aut.type = ENFA; break;
 	default: UNREACHABLE();
 	}
 
+	EXPECT(temp, 1, OPENING_PAREN);
+	
 	token_t state_count_tok;
 	EXPECT(state_count_tok, 1, NUMBER);
 	size_t state_count;
 	sv_tol(&state_count_tok.view, 10, (long*)&state_count);
 	
-	token_t transition_count_tok;
-	EXPECT(transition_count_tok, 1, NUMBER);
-	size_t transition_count;
-	sv_tol(&transition_count_tok.view, 10, (long*)&transition_count);
-	
+	EXPECT(temp, 1, COMMA);
 	token_t initial_state_count_tok;
 	EXPECT(initial_state_count_tok, 1, NUMBER);
 	size_t initial_state_count;
 	sv_tol(&initial_state_count_tok.view, 10, (long*)&initial_state_count);
 
+	EXPECT(temp, 1, COMMA);
 	token_t final_state_count_tok;
 	EXPECT(final_state_count_tok, 1, NUMBER);
 	size_t final_state_count; 
 	sv_tol(&final_state_count_tok.view, 10, (long*)&final_state_count);
 
-	EXPECT(temp, 1, OPENING_PAREN);
-	token_t initial_state_tok;
-	EXPECT(initial_state_tok, 1, NUMBER);
+	EXPECT(temp, 1, COMMA);
+	token_t transition_count_tok;
+	EXPECT(transition_count_tok, 1, NUMBER);
+	size_t transition_count;
+	sv_tol(&transition_count_tok.view, 10, (long*)&transition_count);
 	EXPECT(temp, 1, CLOSING_PAREN);
 	
-	EXPECT(temp, 1, OPENING_PAREN);
-	res->dfa.final_states.size = final_state_count;
-	res->dfa.final_states.items = calloc(final_state_count, sizeof(size_t));
+	EXPECT(temp, 1, OPENING_BRACE);
+
+	EXPECT(temp, 1, OP_A);
+	token_t alphabet_tok;
+	EXPECT(alphabet_tok, 1, STRING);
+	res->aut.alphabet = sv_to_str(&alphabet_tok.view);
 	
+	res->aut.state_names.size = state_count;
+	res->aut.state_names.items = calloc(state_count, sizeof(string));
+	for (size_t i = 0; i < state_count; ++i) {
+		EXPECT(temp, 1, OP_S);
+		token_t state_tok;
+		EXPECT(state_tok, 1, STRING);
+		res->aut.state_names.items[i] = sv_to_str(&state_tok.view);
+	}
+	
+	res->aut.initial_states.size = initial_state_count;
+	res->aut.initial_states.items = calloc(initial_state_count, sizeof(size_t));
+	EXPECT(temp, 1, OP_I);
+	for (size_t i = 0; i < initial_state_count; ++i) {
+		token_t initial_state_tok;
+		EXPECT(initial_state_tok, 1, STRING);
+		int initial_state = SARRAY_INDEX_OF(&initial_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
+
+		if (initial_state == -1) return LOADER_ERROR;
+		
+		res->aut.initial_states.items[i] = (size_t)initial_state;
+
+		if (i != initial_state_count - 1) {
+			EXPECT(temp, 1, COMMA);
+		}
+	}
+	
+	res->aut.final_states.size = final_state_count;
+	res->aut.final_states.items = calloc(final_state_count, sizeof(size_t));
+	EXPECT(temp, 1, OP_F);
 	for (size_t i = 0; i < final_state_count; ++i) {
 		token_t final_state_tok;
-		EXPECT(final_state_tok, 1, NUMBER);
-		size_t final_state;
-		sv_tol(&final_state_tok.view, 10, (long*)&final_state);
-		res->dfa.final_states.items[i] = final_state;
+		EXPECT(final_state_tok, 1, STRING);
+		
+		size_t final_state = SARRAY_INDEX_OF(&final_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
 
-		if (i + 1 == final_state_count) {
-			EXPECT(temp, 1, CLOSING_PAREN);
-		} else {
+		if (final_state == -1) return LOADER_ERROR;
+		
+		res->aut.final_states.items[i] = (size_t)final_state;
+
+		if (i < final_state_count - 1) {
 			EXPECT(temp, 1, COMMA);
 		}
 	}
 
-	token_t alphabet_tok;
-	EXPECT(alphabet_tok, 1, STRING);
-	res->dfa.alphabet = sv_to_str(&alphabet_tok.view);
-
-	res->dfa.state_names.size = state_count;
-	res->dfa.state_names.items = calloc(state_count, sizeof(string));
-	for (size_t i = 0; i < state_count; i++) {
-		EXPECT(temp, 1, OP_S);
-
-		token_t state_name_tok;
-		EXPECT(state_name_tok, 1, STRING);
-		res->dfa.state_names.items[i] = sv_to_str(&state_name_tok.view);
-	}
-
-	res->dfa.transitions = ht_new(transition_count, &hashfunc_u32);
+	res->aut.transitions = ht_new(transition_count, &hashfunc_u32);
         PAIR_STRUCT(u32, u32) *pairs_temp = calloc(transition_count, sizeof(PAIR_STRUCT(u32, u32)));
 	string syms = calloc(transition_count + 1, sizeof(char));
 
@@ -302,23 +332,25 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		EXPECT(start_state_tok, 1, STRING);
 		EXPECT(end_state_tok, 1, STRING);
 		
-		u32 start_state, end_state;
-		if (!find_state_by_name(&res->dfa.state_names, &start_state_tok.view, (size_t*)&start_state)) goto loader_error;
-		if (!find_state_by_name(&res->dfa.state_names, &end_state_tok.view, (size_t*)&end_state)) goto loader_error;
+		int start_state = SARRAY_INDEX_OF(&start_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
+		int end_state = SARRAY_INDEX_OF(&end_state_tok.view, &res->aut.state_names, sizeof(string), sv_cmp_helper);
 
+		if (start_state == -1 || end_state == -1) return LOADER_ERROR;
+		
 		token_t sym_tok;
 		EXPECT(sym_tok, 1, CHAR);
 		
-		if (sym_tok.view.count != 1) goto loader_error;
-		if (!string_contains(sym_tok.view.items[1], res->dfa.alphabet)) goto loader_error;
+		if (!string_contains(sym_tok.view.items[0], res->aut.alphabet)) goto loader_error;
 		
-		pairs_temp[i] = PAIR(u32, u32, start_state, end_state);
-		syms[i] = sym_tok.view.items[i];
+		pairs_temp[i] = PAIR(u32, u32, (u32)start_state, (u32)end_state);
+		syms[i] = sym_tok.view.items[0];
 	}
 	ARRAY_TO_SIZED(pairs_temp, transition_count, pair_u32_u32_t, pairs);
-	res->dfa.transitions = dfa_create_transitions(pairs, syms);
+	res->aut.transitions = aut_create_transitions(pairs, syms);
+
+	EXPECT(temp, 1, CLOSING_BRACE);
 	
-	return res_type;
+	return SUCCESS; 
 
  loader_error:
 	return LOADER_ERROR;
