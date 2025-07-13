@@ -54,6 +54,36 @@ sarray_u32_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
 	return end_state_array;
 }
 
+bool u32_comp(void* obj1, void* obj2) {
+	u32 u1 = *(u32*)obj1;
+	u32 u2 = *(u32*)obj2;
+
+	return u1 == u2;
+}
+
+void get_epsilon_closure(const aut_t *aut, list_u32_t states) {
+	list_u32_t checked_states;
+	INIT_LIST(checked_states, u32, 10);
+
+	size_t i = 0;
+	while (i < states.count) {
+		u32 current_state_idx = states.items[i];
+		if (LIST_CONTAINS(&current_state_idx, checked_states, sizeof(u32), u32_comp)) continue;
+		for (size_t i = 0; i < aut->transitions.size; ++i) {
+			transition_t t = aut->transitions.items[i];
+			if (t.start_state != current_state_idx || t.transition_sym != SYM_EPS) continue;
+
+			if (!LIST_CONTAINS(&t.end_state, states, sizeof(u32), u32_comp)) {
+				LIST_APPEND(states, u32, t.end_state);
+			}
+		}
+		LIST_APPEND(checked_states, u32, current_state_idx);
+		i++;
+	}
+
+	FREE_CONTAINER(checked_states);
+}
+
 bool aut_is_final_state(const aut_t* aut, u32 state_idx) {
 	for (size_t i = 0; i < aut->final_states.size; ++i) {
 		if (aut->final_states.items[i] == state_idx) return true;
@@ -75,7 +105,36 @@ bool aut_accepts(const aut_t* aut, string input) {
 
 	    return aut_is_final_state(aut, current_state);
 	} else {
-		TODO("accept not implemented for NFA and ENFA!");
+		ARRAY_TO_LIST(aut->initial_states.items, aut->initial_states.size, u32, current_states);
+
+		list_u32_t next_states;
+		for (size_t i = 0; i < strlen(input); ++i) {
+			if (current_states.count == 0) break; // if the current states is empty, the word cannot be accepted
+
+			char next = input[i];
+			if (!string_contains(next, aut->alphabet)) return false;
+			INIT_LIST(next_states, u32, 10);
+			if (aut->type == ENFA) get_epsilon_closure(aut, current_states);
+			for (size_t j = 0; j < current_states.count; ++j) {
+				sarray_u32_t curr_next_states = aut_read_single(aut, current_states.items[j], next);
+				LIST_EXTEND(next_states, u32, curr_next_states.items, curr_next_states.size);
+				FREE_CONTAINER(curr_next_states);
+			}
+			FREE_CONTAINER(current_states);
+			current_states = next_states;
+		}
+
+		if (aut->type == ENFA) get_epsilon_closure(aut, current_states);
+		bool success = false;
+		for (size_t i = 0; i < current_states.count; ++i) {
+			if (aut_is_final_state(aut, current_states.items[i])) {
+				success = true;
+				break;
+			}
+		}
+
+		FREE_CONTAINER(current_states);
+		return success;
 	}
 }
 

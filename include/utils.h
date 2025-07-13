@@ -46,6 +46,14 @@ void list_resize(list_t* list, size_t item_size);
 		list_resize((list_t*)&list, sizeof(type)); \
 		list.items[list.count++] = (item);	   \
 	} while(0) 
+#define LIST_EXTEND(list, type, array, array_size) \
+	list_extend((list_t*)(&(list)), (void*)(array), array_size, sizeof(type))
+#define ARRAY_TO_LIST(array, array_size, type, name)		\
+	list_##type##_t name;					\
+	(name).capacity = array_size;				\
+	(name).count = array_size;				\
+	(name).items = malloc(array_size * sizeof(type));	\
+	memcpy((name).items, (array), array_size * sizeof(type));
 #define FREE_CONTAINER(container) free((container).items);
 
 CREATE_LIST(u32);
@@ -68,11 +76,15 @@ typedef sarray_pair_u32_u32_t_t sarray_pair_u32_t;
 	sarray_contains((void*)(obj), (sarray_t*)(_sarray), (item_size), (comp))
 #define SARRAY_INDEX_OF(obj, _sarray, item_size, comp) \
 	sarray_index_of((void*)(obj), (sarray_t*)(_sarray), (item_size), (comp))
+#define LIST_CONTAINS(obj, _list, item_size, comp) \
+	list_contains((void*)obj, (list_t*)&(_list), (item_size), (comp))
 
 size_t hashfunc_u32(u32);
 bool string_contains(char c, const string syms);
 bool sarray_contains(void*, sarray_t*, size_t, comperator_t);
 int sarray_index_of(void* obj, sarray_t* arr, size_t item_size, comperator_t comperator);
+void list_extend(list_t* list, void* items, size_t item_count, size_t item_size);
+bool list_contains(void* obj, list_t* list, size_t item_size, comperator_t comperator);
 
 #endif
 
