@@ -1,5 +1,5 @@
 {
-		"compile_command": "gcc -g -ggdb -I./include $INPUT_FILE src/sv.c src/utils.c src/loader.c src/aut.c src/hashtable.c -o $OUTPUT_FILE",
+		"compile_command": "gcc -g -ggdb -I./include $INPUT_FILE src/sv.c src/utils.c src/loader.c src/aut.c src/graphviz.c -o $OUTPUT_FILE",
 		"run_command": "./$INPUT_FILE $ARGS",
 		"tests": [
 				{
@@ -28,6 +28,10 @@
 				},
 				{
 						"file": "07-load-enfa.c",
+						"args": ""
+				},
+				{
+						"file": "08-graphviz.c",
 						"args": ""
 				}
 		]

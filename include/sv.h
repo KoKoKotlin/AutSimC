@@ -26,9 +26,12 @@ typedef struct {
 	char* items;
 } sb_t;
 
-void sb_append(sb_t*, char);
+void sb_appendc(sb_t*, char);
+void sb_appendi(sb_t*, i64);
+void sb_appendu(sb_t*, u64);
 void sb_extend(sb_t*, const char*);
 sb_t sb_read_file(const string);
+int sv_write_to_file(const sv_t* sv, const string path);
 sv_t sb_build(const sb_t*);
 sb_t sb_from_cstr(const char*);
 void sb_free(sb_t*);

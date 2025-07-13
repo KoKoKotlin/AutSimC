@@ -1,7 +1,18 @@
 #include "sv.h"
 
-void sb_append(sb_t* sb, char c) {
+void sb_appendc(sb_t* sb, char c) {
 	DA_APPEND(sb, c);
+}
+
+void sb_appendi(sb_t* sb, i64 i) {
+	char buf[100] = { 0 };
+	sprintf(buf, "%ld", i);
+	sb_extend(sb, buf);
+}
+void sb_appendu(sb_t* sb, u64 u) {
+	char buf[100] = { 0 };
+	sprintf(buf, "%lu", u);
+	sb_extend(sb, buf);
 }
 
 void sb_extend(sb_t* sb, const char* str) {
@@ -135,6 +146,23 @@ sb_t sb_read_file(const string path) {
 	
 	fclose(file);
 	return builder;
+}
+
+int sv_write_to_file(const sv_t* sv, const string path) {
+	FILE* file = fopen(path, "w");
+	if (file == NULL) return -1;
+
+	string s = sv_to_str(sv);
+	int ret_code;
+	if (!(ret_code = fprintf(file, "%s", s))) {
+		free(s);
+		return ret_code;
+	}
+	
+	free(s);
+
+	fclose(file);
+	return 0;
 }
 
 sv_t sv_from_cstr(const char* str) {

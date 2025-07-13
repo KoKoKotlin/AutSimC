@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -g -ggdb -O0 -Wall -Wextra -I./$(INCLUDE_DIR) -std=c99
 
 # List source files
-GEN_SOURCES = loader.c aut.c hashtable.c sv.c utils.c
+GEN_SOURCES = graphviz.c loader.c aut.c hashtable.c sv.c utils.c
 MAIN_SOURCE = main.c
 
 # Full paths to source files

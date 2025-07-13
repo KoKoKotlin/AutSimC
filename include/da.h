@@ -8,6 +8,7 @@
 
 #define DA_EXTEND(da, ncount) do {						\
 		(da)->items = realloc((da)->items, (ncount) * sizeof((da)->items)/sizeof((da)->items[0])); \
+		(da)->size = ncount;					\
 } while(0)
 
 #define DA_INIT(da, ncount, nsize) do {				\

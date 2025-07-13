@@ -6,7 +6,7 @@ int main() {
     string exp_res_format = "abc def %c ff";
     sb_t builder = { 0 };
     sb_extend(&builder, "abc def ");
-    sb_append(&builder, SYM_EPS);
+    sb_appendc(&builder, SYM_EPS);
     sb_extend(&builder, " ff");
     sv_t exp_view = sb_build(&builder);
     sb_free(&builder);
