@@ -1,13 +1,11 @@
-enfa(3, 1, 2, 4) {
+enfa(2, 1, 2, 3) {
   a "ab"
   s "a"
   s "b"
-  s "c"
   i "a"
   f "a", "b"
-  t "a" "b" 'a'
-  t "b" "a" 'b'
-  t "a" "c" '\e'
-  t "b" "c" '\e' 
+  t "a" "a" 'a'
+  t "b" "b" 'b'
+  t "a" "b" '\e'
 }
 

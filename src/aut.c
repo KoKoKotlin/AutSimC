@@ -46,7 +46,7 @@ sarray_u32_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
 		transition_t* t = &aut->transitions.items[i];
 
 		if (t->start_state != curr_state_idx || t->transition_sym != c) continue;
-		LIST_APPEND(end_states, size_t, t->end_state);
+		LIST_APPEND(&end_states, size_t, t->end_state);
 	}
 
 	ARRAY_TO_SIZED(end_states.items, end_states.count, u32, end_state_array);
@@ -61,14 +61,14 @@ bool u32_comp(void* obj1, void* obj2) {
 	return u1 == u2;
 }
 
-void get_epsilon_closure(const aut_t *aut, list_u32_t states) {
+void get_epsilon_closure(const aut_t *aut, list_u32_t *states) {
 	list_u32_t checked_states;
 	INIT_LIST(checked_states, u32, 10);
 
 	size_t i = 0;
-	while (i < states.count) {
-		u32 current_state_idx = states.items[i];
-		if (LIST_CONTAINS(&current_state_idx, checked_states, sizeof(u32), u32_comp)) continue;
+	while (i < states->count) {
+		u32 current_state_idx = states->items[i];
+		if (LIST_CONTAINS(&current_state_idx, &checked_states, sizeof(u32), u32_comp)) continue;
 		for (size_t i = 0; i < aut->transitions.size; ++i) {
 			transition_t t = aut->transitions.items[i];
 			if (t.start_state != current_state_idx || t.transition_sym != SYM_EPS) continue;
@@ -77,7 +77,7 @@ void get_epsilon_closure(const aut_t *aut, list_u32_t states) {
 				LIST_APPEND(states, u32, t.end_state);
 			}
 		}
-		LIST_APPEND(checked_states, u32, current_state_idx);
+		LIST_APPEND(&checked_states, u32, current_state_idx);
 		i++;
 	}
 
@@ -114,17 +114,17 @@ bool aut_accepts(const aut_t* aut, string input) {
 			char next = input[i];
 			if (!string_contains(next, aut->alphabet)) return false;
 			INIT_LIST(next_states, u32, 10);
-			if (aut->type == ENFA) get_epsilon_closure(aut, current_states);
+			if (aut->type == ENFA) get_epsilon_closure(aut, &current_states);
 			for (size_t j = 0; j < current_states.count; ++j) {
 				sarray_u32_t curr_next_states = aut_read_single(aut, current_states.items[j], next);
-				LIST_EXTEND(next_states, u32, curr_next_states.items, curr_next_states.size);
+				LIST_EXTEND(&next_states, u32, curr_next_states.items, curr_next_states.size);
 				FREE_CONTAINER(curr_next_states);
 			}
 			FREE_CONTAINER(current_states);
 			current_states = next_states;
 		}
 
-		if (aut->type == ENFA) get_epsilon_closure(aut, current_states);
+		if (aut->type == ENFA) get_epsilon_closure(aut, &current_states);
 		bool success = false;
 		for (size_t i = 0; i < current_states.count; ++i) {
 			if (aut_is_final_state(aut, current_states.items[i])) {

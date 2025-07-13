@@ -53,4 +53,5 @@ void list_extend(list_t* list, void* items, size_t item_count, size_t item_size)
 	while (list->capacity < list->count + item_count) list_resize(list, item_size);
 	u8* bytes = (u8*)list->items;
 	memcpy(bytes + list->count * item_size, items, item_size * item_count);
+	list->count += item_count;
 }
