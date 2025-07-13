@@ -5,8 +5,12 @@ void sb_append(sb_t* sb, char c) {
 }
 
 void sb_extend(sb_t* sb, const char* str) {
-	while (sb->size < sb->count + strlen(str)) DA_EXTEND(sb, sb->size + strlen(str));
+	if (sb->items == NULL) {
+		DA_INIT(sb, 16, sizeof(char));
+	}
+	while (sb->size < sb->count + strlen(str)) DA_EXTEND(sb, sb->size * 2);
 	memcpy(sb->items + sb->count, str, strlen(str));
+	sb->count += strlen(str);
 }
 
 sv_t sb_build(const sb_t* sb) {
