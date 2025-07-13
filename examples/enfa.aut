@@ -1,0 +1,13 @@
+enfa(3, 1, 2, 4) {
+  a "ab"
+  s "a"
+  s "b"
+  s "c"
+  i "a"
+  f "a", "b"
+  t "a" "b" 'a'
+  t "b" "a" 'b'
+  t "a" "c" '\e'
+  t "b" "c" '\e' 
+}
+

@@ -9,7 +9,7 @@ int main() {
 	loader_result_t res = { 0 };
 	loader_result_type_t res_type = load(path, &res);
 	if (res_type != SUCCESS) {
-		fprintf(stderr, "Loader failed to load example %s! Expected: %s, Actual: %s.\n", path);
+		fprintf(stderr, "Loader failed to load example %s!\n", path);
 		exit(-1);
 	}
 

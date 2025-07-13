@@ -21,6 +21,14 @@
 				{
 						"file": "05-dfa-loader.c",
 						"args": ""
+				},
+				{
+						"file": "06-test-escape.c",
+						"args": ""
+				},
+				{
+						"file": "07-load-enfa.c",
+						"args": ""
 				}
 		]
 }

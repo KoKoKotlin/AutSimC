@@ -80,6 +80,10 @@ bool aut_accepts(const aut_t* aut, string input) {
 }
 
 bool check_eps_transisitions(const aut_t* aut) {
+	for (size_t i = 0; i < aut->transitions.size; ++i) {
+		if (aut->transitions.items[i].transition_sym == SYM_EPS) return true;
+	}
+
 	return false;
 }
 
@@ -103,6 +107,7 @@ bool aut_check_valid(const aut_t* aut) {
 		}
 		if (aut->initial_states.size != 1) return false;
 	} else if (aut->type == NFA) {
+		if (check_eps_transisitions(aut)) return false;
 	}
 
 	return true;
@@ -123,16 +128,16 @@ void aut_debug_print(const aut_t* aut) {
 	printf("\n");
 	printf("Alphabet: %s\n", aut->alphabet);
 	
-	for (u32 i = 0; i < aut->state_names.size; ++i) {
-		for (char* c = aut->alphabet; *c != '\0'; c++) {
-			sarray_u32_t next_states = aut_read_single(aut, i, *c);
-			printf("  - Transition: %s(%u) & %c ->", aut->state_names.items[i], i, *c);
-			for (size_t i = 0; i < next_states.size; ++i) {
-				u32 next_state = next_states.items[i];
-				printf(" %s(%u)", aut->state_names.items[next_state], next_state);
-			}
-			printf("\n");
-			FREE_CONTAINER(next_states);
-		}
+	printf("Transitions:\n");
+	for (size_t i = 0; i < aut->transitions.size; ++i) {
+		transition_t transition = aut->transitions.items[i];
+		size_t start_state = transition.start_state;
+		size_t end_state = transition.end_state;
+		string start_state_name = aut->state_names.items[start_state];
+		string end_state_name = aut->state_names.items[end_state];
+		printf("\t- %s(%zu) -- ", start_state_name, start_state);
+		if (transition.transition_sym != SYM_EPS) printf(" %c ", transition.transition_sym);
+		else printf("eps");
+	    printf(" --> %s(%zu)\n", end_state_name, end_state);
 	}
 }

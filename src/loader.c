@@ -85,6 +85,23 @@ token_t error_tok(lexer_t* lexer, const string msg) {
 	return t;
 }
 
+bool replace_eps(sv_t *view) {
+	size_t i = 0; 
+	while (i < view->count) {
+		if(view->items[i] == '\\') {
+			if (i == view->count - 1 || view->items[i+1] != 'e') return false;
+			view->items[i] = SYM_EPS;
+			memcpy(&view->items[i+1], &view->items[i+2], view->count - (i+2));
+			view->count -= 1;
+			continue;
+		}
+		
+		i++;
+	}
+
+	return true;
+}
+
 token_t next_token(lexer_t* lexer) {
 	token_t tok = { 0 };
 	
@@ -107,18 +124,23 @@ token_t next_token(lexer_t* lexer) {
 			lexer->col += 1;
 			break;
 		} else if (next == '\'') {
-			if (lexer->view.items[2] != '\'') {
+			if (lexer->view.items[2] != '\'' && !(lexer->view.items[1] == '\\' && lexer->view.items[3] == '\'')) {
 				return error_tok(lexer, "Char has no closing `'`!");
-			}	
+			}
+
+			size_t size = lexer->view.items[2] == '\'' ? 1 : 2;
 
 			tok.col = lexer->col;
 			tok.row = lexer->row;
 			sv_chopi(&lexer->view, 1);
-			tok.view = sv_chopi(&lexer->view, 1);
+			tok.view = sv_chopi(&lexer->view, size);
+			if (!replace_eps(&tok.view)) {
+				return error_tok(lexer, "Unknown escape sequence!");
+			}
 			sv_chopi(&lexer->view, 1);
 			tok.type = CHAR;
-			lexer->current += 3;
-			lexer->col += 3;
+			lexer->current += size + 2;
+			lexer->col += size + 2;
 			break;
 		} else if (next == '\"') {
 			next = lexer->view.items[++i];
@@ -134,6 +156,9 @@ token_t next_token(lexer_t* lexer) {
 			tok.row = lexer->row;
 			sv_chopi(&lexer->view, 1);
 			tok.view = sv_chopi(&lexer->view, i-1);
+			if (!replace_eps(&tok.view)) {
+				return error_tok(lexer, "Unknown escape sequence!");
+			}
 			sv_chopi(&lexer->view, 1);
 			tok.type = STRING;
 			lexer->current += i+1;
@@ -338,7 +363,7 @@ loader_result_type_t load(const string path, loader_result_t* res) {
 		token_t sym_tok;
 		EXPECT(sym_tok, 1, CHAR);
 		
-		if (!string_contains(sym_tok.view.items[0], res->aut.alphabet)) goto loader_error;
+		if (!string_contains(sym_tok.view.items[0], res->aut.alphabet) && sym_tok.view.items[0] != SYM_EPS) goto loader_error;
 		transition_t* t = &res->aut.transitions.items[i];
 		t->start_state = start_state;
 		t->end_state = end_state;

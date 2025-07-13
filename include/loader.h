@@ -121,5 +121,6 @@ void expect_error(const token_t* token, const string path, int count, ...);
 bool expect_token(lexer_t* lexer, token_t* res, int count, ...);
 bool tok_type_equal(void* obj1, void* obj2);
 token_type_t get_token_type(sv_t* view);
+bool replace_eps(sv_t *view);
 
 #endif

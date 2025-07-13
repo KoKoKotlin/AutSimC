@@ -10,6 +10,7 @@
 #include "utils.h"
 
 #define AUTTYPE_NAME(type) auttype_names[type]
+#define SYM_EPS 127
 
 typedef enum {
 	DFA,
