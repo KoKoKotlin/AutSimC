@@ -37,10 +37,10 @@ aut_t aut_new(aut_type_t type, sarray_string_t state_names, sarray_size_t final_
 	return aut; 
 }
 
-sarray_u32_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
+sarray_size_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
 	assert(strchr(aut->alphabet, c) != NULL && "The given char is not in the auts alphabet!");
-	list_u32_t end_states = { 0 };
-	INIT_LIST(end_states, u32, 10);
+	list_size_t end_states = { 0 };
+	INIT_LIST(end_states, size_t, 10);
 	
 	for (size_t i = 0; i < aut->transitions.size; ++i) {
 		transition_t* t = &aut->transitions.items[i];
@@ -49,42 +49,51 @@ sarray_u32_t aut_read_single(const aut_t* aut, size_t curr_state_idx, char c) {
 		LIST_APPEND(&end_states, size_t, t->end_state);
 	}
 
-	ARRAY_TO_SIZED(end_states.items, end_states.count, u32, end_state_array);
+	ARRAY_TO_SIZED(end_states.items, end_states.count, size_t, end_state_array);
 	FREE_CONTAINER(end_states);
 	return end_state_array;
 }
 
-bool u32_comp(void* obj1, void* obj2) {
-	u32 u1 = *(u32*)obj1;
-	u32 u2 = *(u32*)obj2;
+bool size_t_comp(void* obj1, void* obj2) {
+	size_t u1 = *(size_t*)obj1;
+	size_t u2 = *(size_t*)obj2;
 
 	return u1 == u2;
 }
 
-void get_epsilon_closure(const aut_t *aut, list_u32_t *states) {
-	list_u32_t checked_states;
-	INIT_LIST(checked_states, u32, 10);
+
+void get_epsilon_closure(const aut_t *aut, list_size_t *states) {
+	list_size_t checked_states;
+	INIT_LIST(checked_states, size_t, 10);
 
 	size_t i = 0;
 	while (i < states->count) {
 		u32 current_state_idx = states->items[i];
-		if (LIST_CONTAINS(&current_state_idx, &checked_states, sizeof(u32), u32_comp)) continue;
+		if (LIST_CONTAINS(&current_state_idx, &checked_states, sizeof(size_t), size_t_comp)) continue;
 		for (size_t i = 0; i < aut->transitions.size; ++i) {
 			transition_t t = aut->transitions.items[i];
 			if (t.start_state != current_state_idx || t.transition_sym != SYM_EPS) continue;
 
-			if (!LIST_CONTAINS(&t.end_state, states, sizeof(u32), u32_comp)) {
-				LIST_APPEND(states, u32, t.end_state);
+			if (!LIST_CONTAINS(&t.end_state, states, sizeof(size_t), size_t_comp)) {
+				LIST_APPEND(states, size_t, t.end_state);
 			}
 		}
-		LIST_APPEND(&checked_states, u32, current_state_idx);
+		LIST_APPEND(&checked_states, size_t, current_state_idx);
 		i++;
 	}
 
 	FREE_CONTAINER(checked_states);
 }
 
-bool aut_is_final_state(const aut_t* aut, u32 state_idx) {
+list_size_t get_epsilon_closure_single(const aut_t *aut, size_t state) {
+	list_size_t states;
+	INIT_LIST(states, size_t, 16);
+	LIST_APPEND(&states, size_t, state);
+	get_epsilon_closure(aut, &states);
+	return states;
+}
+
+bool aut_is_final_state(const aut_t* aut, size_t state_idx) {
 	for (size_t i = 0; i < aut->final_states.size; ++i) {
 		if (aut->final_states.items[i] == state_idx) return true;
 	}
@@ -94,10 +103,10 @@ bool aut_is_final_state(const aut_t* aut, u32 state_idx) {
 
 bool aut_accepts(const aut_t* aut, string input) {
 	if (aut->type == DFA) {
-	    u32 current_state = aut->initial_states.items[0];
+	    size_t current_state = aut->initial_states.items[0];
 	    for (size_t i = 0; i < strlen(input); ++i) {
 		    char next = input[i];
-		    sarray_u32_t next_states = aut_read_single(aut, current_state, next);
+		    sarray_size_t next_states = aut_read_single(aut, current_state, next);
 		    if (next_states.size == 0) return false; // symbol not in alphabet
 		    current_state = next_states.items[0]; // there can only be one next state and also there has to one
 		    FREE_CONTAINER(next_states);
@@ -105,19 +114,19 @@ bool aut_accepts(const aut_t* aut, string input) {
 
 	    return aut_is_final_state(aut, current_state);
 	} else {
-		ARRAY_TO_LIST(aut->initial_states.items, aut->initial_states.size, u32, current_states);
+		ARRAY_TO_LIST(aut->initial_states.items, aut->initial_states.size, size_t, current_states);
 
-		list_u32_t next_states;
+		list_size_t next_states;
 		for (size_t i = 0; i < strlen(input); ++i) {
 			if (current_states.count == 0) break; // if the current states is empty, the word cannot be accepted
 
 			char next = input[i];
 			if (!string_contains(next, aut->alphabet)) return false;
-			INIT_LIST(next_states, u32, 10);
+			INIT_LIST(next_states, size_t, 16);
 			if (aut->type == ENFA) get_epsilon_closure(aut, &current_states);
 			for (size_t j = 0; j < current_states.count; ++j) {
-				sarray_u32_t curr_next_states = aut_read_single(aut, current_states.items[j], next);
-				LIST_EXTEND(&next_states, u32, curr_next_states.items, curr_next_states.size);
+				sarray_size_t curr_next_states = aut_read_single(aut, current_states.items[j], next);
+				LIST_EXTEND(&next_states, size_t, curr_next_states.items, curr_next_states.size);
 				FREE_CONTAINER(curr_next_states);
 			}
 			FREE_CONTAINER(current_states);
@@ -158,7 +167,7 @@ bool aut_check_valid(const aut_t* aut) {
 	if (aut->type == DFA) {
 		for (size_t i = 0; i < aut->state_names.size; ++i) {
 			for(char* c = aut->alphabet; *c != '\0'; c++) {
-				sarray_u32_t next_state = aut_read_single(aut, i, *c);
+				sarray_size_t next_state = aut_read_single(aut, i, *c);
 				bool invalid = next_state.size == 0;
 				FREE_CONTAINER(next_state);
 				if (invalid) return false;
@@ -170,6 +179,68 @@ bool aut_check_valid(const aut_t* aut) {
 	}
 
 	return true;
+}
+
+// transition formula (delta': transition relation nfa, delta: transition relation of enfa, q: state, sigma: input symbol):
+// delta'(q, sigma) = ecls(delta(ecls(q), sigma))
+// drop epsilon transitions and add all transitions to the nfa according to the formula
+// additionally add the epsilon closure of all initial states as initial states
+aut_t aut_to_nfa(const aut_t* aut) {
+	if (aut->type != ENFA) {
+		TODO("Copy aut");
+	}
+	
+	list_size_t initial_states;
+	INIT_LIST(initial_states, size_t, 16);
+	LIST_EXTEND(&initial_states, size_t, aut->initial_states.items, aut->initial_states.size);
+	get_epsilon_closure(aut, &initial_states);
+
+	list_transition_t transitions;
+	INIT_LIST(transitions, transition_t, 16);
+	for (size_t i = 0; i < aut->state_names.size; ++i) {
+		for (size_t j = 0; j < strlen(aut->alphabet); ++j) {
+			char curr_sym = aut->alphabet[j];
+			list_size_t closure = get_epsilon_closure_single(aut, i);
+
+			list_size_t end_states;
+			INIT_LIST(end_states, u32, 16);
+			for (size_t k = 0; k < closure.count; ++k) {
+				sarray_size_t states = aut_read_single(aut, closure.items[k], curr_sym);
+				for (size_t m = 0; m < states.size; ++m) {
+					if (!LIST_CONTAINS(&states.items[m], &end_states, sizeof(size_t), size_t_comp)) {
+						LIST_APPEND(&end_states, size_t, states.items[m]);
+					}
+				}
+				FREE_CONTAINER(states);
+			}
+
+			get_epsilon_closure(aut, &end_states);
+			for (size_t k = 0; k < end_states.count; ++k) {
+				transition_t t = {
+					.start_state = i,
+					.end_state = end_states.items[k],
+					.transition_sym = curr_sym,
+				};
+				LIST_APPEND(&transitions, transition_t, t);
+			}
+			
+			FREE_CONTAINER(end_states);
+			FREE_CONTAINER(closure);
+		}
+	}
+	
+	SARRAY_COPY(aut->state_names, string, nfa_states);
+	ARRAY_TO_SIZED(initial_states.items, initial_states.count, size_t, nfa_init_states);
+	SARRAY_COPY(aut->final_states, size_t, nfa_final_states);
+	ARRAY_TO_SIZED(transitions.items, transitions.count, transition_t, nfa_transitions);
+
+	string nfa_alphabet = malloc(strlen(aut->alphabet) * sizeof(char));
+	memcpy(nfa_alphabet, aut->alphabet, strlen(aut->alphabet) * sizeof(char));
+
+	FREE_CONTAINER(initial_states);
+	FREE_CONTAINER(transitions);
+	
+	return aut_new(NFA, nfa_states, nfa_init_states, nfa_final_states, nfa_transitions, nfa_alphabet);
 }
 
 void aut_debug_print(const aut_t* aut) {

@@ -32,6 +32,8 @@ typedef struct {
 	(name).size = array_size;				\
 	(name).items = malloc(array_size * sizeof(type));	\
 	memcpy((name).items, (array), array_size * sizeof(type));
+#define SARRAY_COPY(_sarray, type, name) \
+	ARRAY_TO_SIZED((_sarray).items, (_sarray).size, type, name)
 
 typedef struct {
 	size_t count;
@@ -74,6 +76,9 @@ CREATE_SIZED_ARRAY(string);
 CREATE_SIZED_ARRAY(u32);
 CREATE_SIZED_ARRAY(pair_u32_u32_t);
 typedef sarray_pair_u32_u32_t_t sarray_pair_u32_t;
+
+CREATE_LIST(size_t);
+typedef list_size_t_t list_size_t;
 
 #define SARRAY_CONTAINS(obj, _sarray, item_size, comp) \
 	sarray_contains((void*)(obj), (sarray_t*)(_sarray), (item_size), (comp))
